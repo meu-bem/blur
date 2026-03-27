@@ -2,6 +2,16 @@
 
 A cross-platform Rust CLI tool designed to redact (blur) sensitive information from your terminal screen before taking screenshots or sharing your screen. 
 
+---
+
+### 📥 [Download Latest Version](https://github.com/mateussm/blur/releases/latest)
+Get the pre-compiled binary for your system:
+- **[🐧 Linux](https://github.com/mateussm/blur/releases/latest/download/blur-linux)**
+- **[🪟 Windows](https://github.com/mateussm/blur/releases/latest/download/blur-windows.exe)**
+- **[🍏 MacOS](https://github.com/mateussm/blur/releases/latest/download/blur-macos)**
+
+---
+
 Unlike simple filters, **Blur** can "recreate" your terminal buffer, preserving your original colors and layout while randomizing specific text ranges or regex patterns.
 
 ## ✨ Features
