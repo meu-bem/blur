@@ -1,14 +1,18 @@
-`use clap::Parser;
+use arboard::Clipboard;
+use clap::Parser;
+use is_terminal::IsTerminal;
 use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 use regex::Regex;
 use std::io::{self, Read};
-use is_terminal::IsTerminal;
 use std::process::Command;
-use arboard::Clipboard;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Blur text ranges and regex patterns in terminal output while preserving colors.")]
+#[command(
+    author,
+    version,
+    about = "Blur text ranges and regex patterns in terminal output while preserving colors."
+)]
 struct Args {
     /// Ranges (e.g., 1:1..4:32) or regex patterns to blur
     patterns: Vec<String>,
@@ -40,21 +44,23 @@ enum Part<'a> {
 }
 
 fn capture_screen() -> Option<String> {
-    if let Ok(output) = Command::new("tmux").args(["capture-pane", "-e", "-p"]).output() {
-        if output.status.success() {
-            let content = String::from_utf8_lossy(&output.stdout).to_string();
-            if !content.is_empty() {
-                return Some(content);
-            }
-        }
+    if let Some(content) = Command::new("tmux")
+        .args(["capture-pane", "-e", "-p"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .filter(|c| !c.is_empty())
+    {
+        return Some(content);
     }
 
-    if let Ok(mut clipboard) = Clipboard::new() {
-        if let Ok(text) = clipboard.get_text() {
-            if !text.is_empty() {
-                return Some(text);
-            }
-        }
+    if let Some(text) = Clipboard::new()
+        .ok()
+        .and_then(|mut cb| cb.get_text().ok())
+        .filter(|t| !t.is_empty())
+    {
+        return Some(text);
     }
 
     None
@@ -98,8 +104,16 @@ fn blur_line(
     // 3. Mark indices from ranges
     for range in ranges {
         if row >= range.start.row && row <= range.end.row {
-            let col_start = if row == range.start.row { range.start.col } else { 1 };
-            let col_end = if row == range.end.row { range.end.col } else { visible_char_count };
+            let col_start = if row == range.start.row {
+                range.start.col
+            } else {
+                1
+            };
+            let col_end = if row == range.end.row {
+                range.end.col
+            } else {
+                visible_char_count
+            };
 
             for col in col_start..=col_end {
                 if col > 0 && col <= visible_char_count {
@@ -185,7 +199,9 @@ fn main() -> io::Result<()> {
         match capture_screen() {
             Some(content) => content,
             None => {
-                eprintln!("Error: Cannot read terminal buffer. Please run inside tmux or copy your terminal screen to the clipboard first.");
+                eprintln!(
+                    "Error: Cannot read terminal buffer. Please run inside tmux or copy your terminal screen to the clipboard first."
+                );
                 std::process::exit(1);
             }
         }
@@ -212,7 +228,13 @@ fn main() -> io::Result<()> {
 
     let mut final_lines = Vec::new();
     for (row_idx, line) in lines.iter().enumerate() {
-        final_lines.push(blur_line(line, row_idx + 1, &ranges, &regexes, args.preserve_spaces));
+        final_lines.push(blur_line(
+            line,
+            row_idx + 1,
+            &ranges,
+            &regexes,
+            args.preserve_spaces,
+        ));
     }
 
     if io::stdin().is_terminal() {
